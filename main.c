@@ -1,3 +1,11 @@
+#include <AFMotor.h>
+
+AF_DCMotor motor1(1);
+AF_DCMotor motor2(2);
+AF_DCMotor motor3(3);
+AF_DCMotor motor4(4);
+
+
 bool isMovingForward = false;
 bool isMovingBackward = false;
 bool isMovingLeft = false;
@@ -8,10 +16,19 @@ void setup() {
 
   Serial.begin(9600);
 
-  pinMode(22, OUTPUT);
-  pinMode(23, OUTPUT);
-  pinMode(24, OUTPUT);
-  pinMode(25, OUTPUT);
+  motor1.setSpeed(255);
+  motor1.run(RELEASE);
+
+  motor2.setSpeed(255);
+  motor2.run(RELEASE);
+
+  motor3.setSpeed(255);
+  motor3.run(RELEASE);
+
+  motor4.setSpeed(255);
+  motor4.run(RELEASE);
+
+
 }
 
 void loop() {
@@ -26,7 +43,7 @@ void loop() {
   if (str.length() > 1) {
     Serial.print(str);
     if (str.charAt(0) == 'M') {
-    setCurrentMovement(str.charAt(1), 100);
+      setCurrentMovement(str.charAt(1), 100);
     }
 
   }
@@ -62,26 +79,26 @@ String readSerial() {
 
 void keepMoving() {
   if (isMovingForward) {
-    showNumber(1);
+    goForward();
   }
 
   if (isMovingBackward) {
-    showNumber(2);
+    goBackward();
   }
 
   if (isMovingLeft) {
-    showNumber(3);
+    turnLeft();
   }
 
   if (isMovingRight) {
-    showNumber(4);
+    turnRight();
   }
 
   if (!isMovingForward &&
     !isMovingBackward &&
     !isMovingLeft &&
     !isMovingRight)
-    showNumber(7);
+    stayStill();
 }
 
 void setCurrentMovement(char direction, int speed) {
@@ -114,46 +131,30 @@ void setCurrentMovement(char direction, int speed) {
 
 }
 
-void turnAllOff() {
-  digitalWrite(22, LOW);
-  digitalWrite(23, LOW);
-  digitalWrite(24, LOW);
-  digitalWrite(25, LOW);
+void stayStill(){
+    motor1.run(RELEASE);
+    motor2.run(RELEASE);
+    motor3.run(RELEASE);
+    motor4.run(RELEASE);
+    delay(300);
 }
 
-void showNumber(int number) {
-    turnAllOff();
-    switch (number) {
-    case 0:
-      turnAllOff();
-      break;
-    case 1:
-      digitalWrite(22, HIGH);
-      break;
-    case 2:
-      digitalWrite(23, HIGH);
-      break;
-    case 3:
-      digitalWrite(22, HIGH);
-      digitalWrite(23, HIGH);
-      break;
-    case 4:
-      digitalWrite(24, HIGH);
-      break;
-      break;
-    case 5:
-      digitalWrite(24, HIGH);
-      digitalWrite(22, HIGH);
-      break;
-    case 6:
-      digitalWrite(24, HIGH);
-      digitalWrite(23, HIGH);
-      break;
-    default:
-      digitalWrite(22, HIGH);
-      digitalWrite(23, HIGH);
-      digitalWrite(24, HIGH);
+void goForward(){
+    motor1.run(FORWARD);
+    motor2.run(FORWARD);
+}
 
-    }
+void goBackward(){
+    motor1.run(BACKWARD);
+    motor2.run(BACKWARD);
+}
 
+void turnLeft(){
+    motor1.run(FORWARD);
+    motor2.run(BACKWARD);
+}
+
+void turnRight(){
+    motor1.run(BACKWARD);
+    motor2.run(FORWARD);
 }
