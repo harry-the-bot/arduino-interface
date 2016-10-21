@@ -1,48 +1,11 @@
 #include <AFMotor.h>
-#include "HC_SR04.h"
+
+//LEDS
+int redLed = 44;
+int greenLed = 45;
+int blueLed = 46;
 
 //SENSORS
-int frontLeftTrigger = 22;
-int frontRightTrigger = 24;
-int leftRightTrigger = 26;
-int leftLeftTrigger = 28;
-int rightRightTrigger = 30;
-int rightLeftTrigger = 32;
-int backRightTrigger = 34;
-int backLeftTrigger = 36;
-
-int frontLeftEcho = 23;
-int frontRightEcho = 25;
-int leftRightEcho = 27;
-int leftLeftEcho = 29;
-int rightRightEcho = 31;
-int rightLeftEcho = 33;
-int backRightEcho = 35;
-int backLeftEcho = 37;
-
-// ENGINES
-AF_DCMotor motor1(1);
-AF_DCMotor motor2(2);
-AF_DCMotor motor3(3);
-AF_DCMotor motor4(4);
-
-// SENSORS
-HC_SR04 sensorFrontLeft(frontLeftTrigger, frontLeftEcho, 0);
-HC_SR04 sensorFrontRight(frontRightTrigger, frontRightEcho, 1);
-HC_SR04 sensorRightRight(rightRightTrigger, rightRightEcho, 2);
-HC_SR04 sensorRightLeft(rightLeftTrigger, rightLeftEcho, 3);
-HC_SR04 sensorLeftRight(leftRightTrigger, leftRightEcho, 4);
-HC_SR04 sensorLeftLeft(leftLeftTrigger, leftLeftEcho, 5);
-HC_SR04 sensorBackRight(backRightTrigger, backRightEcho, 6);
-HC_SR04 sensorBackLeft(backLeftTrigger, backLeftEcho, 7);
-
-// Globals
-bool isMovingForward = false;
-bool isMovingBackward = false;
-bool isMovingLeft = false;
-bool isMovingRight = false;
-bool saidHello = false;
-
 long frontLeftDistance = 0;
 long frontRightDistance = 0;
 long leftLeftDistance = 0;
@@ -51,36 +14,181 @@ long backLeftDistance = 0;
 long backRightDistance = 0;
 long rightLeftDistance = 0;
 long rightRightDistance = 0;
-bool startedSensors = false;
+
+// ENGINES
+AF_DCMotor motor1(1);
+AF_DCMotor motor2(2);
+AF_DCMotor motor3(3);
+AF_DCMotor motor4(4);
+
+// Globals
+bool isMovingForward = false;
+bool isMovingBackward = false;
+bool isMovingLeft = false;
+bool isMovingRight = false;
+bool saidHello = false;
+
 
 void setup() {
 
   Serial.begin(9600);
-    
+  Serial2.begin(9600);
+  
+  pinMode(redLed, OUTPUT);
+  pinMode(greenLed, OUTPUT);
+  pinMode(blueLed, OUTPUT);
+  
   //ENGINES
-  motor1.setSpeed(255);
-  motor1.run(RELEASE);
+  /*motor1.setSpeed(255);
+  motor1.run(RELEASE);*/
 
-  motor2.setSpeed(255);
+  motor2.setSpeed(200);
   motor2.run(RELEASE);
 
-  motor3.setSpeed(255);
+  motor3.setSpeed(200);
   motor3.run(RELEASE);
 
-  motor4.setSpeed(255);
-  motor4.run(RELEASE);
+  /*motor4.setSpeed(255);
+  motor4.run(RELEASE);*/
 
-  
 }
 
-void loop() {
 
+void loop() {
+  analogWrite(redLed, 255);
+  analogWrite(greenLed, 0);
+  analogWrite(blueLed, 0);
   if (!saidHello) {
-    Serial.write("HEL");
+    Serial.write("HELLO;");
     saidHello = true;
   }
 
-  String str = readSerial();
+  checkEngines();
+  updateSensors();
+  reportSensors();
+ 
+  
+  keepMoving();
+  
+}
+
+/**************************************************
+ *
+ *          SENSORS
+ *
+ *************************************************/
+
+void reportSensors(){
+  reportSensor('F','L',frontLeftDistance);
+  reportSensor('F','R',frontRightDistance);
+  reportSensor('L','L',leftLeftDistance);
+  reportSensor('L','R',leftRightDistance);
+  reportSensor('B','L',backLeftDistance);
+  reportSensor('B','R',backRightDistance);
+  reportSensor('R','L',rightLeftDistance);
+  reportSensor('R','R',rightRightDistance);
+}
+
+void reportSensor(char location, char place, int distance){
+  String report = "S";
+  report += location;
+  report += place;
+  report += distance;
+  report += ";\r\n";
+
+  Serial.print(report);
+}
+
+//@TODO Refactor this, please.
+void updateSensors(){
+  
+  String s = readSerial2();
+  if(s.charAt(0) == 'S'){
+    
+    String strDistance = s.substring(3,6);
+    int distance = strDistance.toInt();
+
+    //FRONT SENSORS
+    if(s.charAt(1) == 'F'){
+      
+      if(s.charAt(2) == 'L'){
+        frontLeftDistance = distance;          
+      }
+      if(s.charAt(2) == 'R'){
+        frontRightDistance = distance;          
+      }
+    }//FRONT SENSORS
+
+    
+    //LEFT SENSORS
+    if(s.charAt(1) == 'L'){
+      
+      if(s.charAt(2) == 'L'){
+        leftLeftDistance = distance;          
+      }
+      if(s.charAt(2) == 'R'){
+        leftRightDistance = distance;          
+      }
+    }//LEFT SENSORS
+
+    //BACK SENSORS
+    if(s.charAt(1) == 'B'){
+      
+      if(s.charAt(2) == 'L'){
+        backLeftDistance = distance;          
+      }
+      if(s.charAt(2) == 'R'){
+        backRightDistance = distance;          
+      }
+    }//BACK SENSORS
+
+    //RIGHT SENSORS
+    if(s.charAt(1) == 'R'){
+      
+      if(s.charAt(2) == 'L'){
+        rightLeftDistance = distance;          
+      }
+      if(s.charAt(2) == 'R'){
+        rightRightDistance = distance;          
+      }
+    }//RIGHT SENSORS
+    
+  }//is sensor report
+  
+}
+String readSerial2() {
+
+  String str = "";
+  while (Serial2.available() > 0) {
+    delay(1);
+    char c = (char) Serial2.read();
+
+    if (c == ';')
+      break;
+
+    str += c;
+
+  }
+
+  if (str.length() > 0) {
+
+    return str;
+
+  }
+
+  return "";
+
+}
+
+
+/**************************************************
+ *
+ *          ENGINE
+ *
+ *************************************************/
+
+void checkEngines(){
+  String str = readSerial0();
 
   if (str.length() > 1) {
     Serial.print(str);
@@ -89,72 +197,8 @@ void loop() {
     }
 
   }
-
-  keepMoving();
-  /*Serial.print(frontLeftDistance);
-  Serial.print(" - ");
-  Serial.print(frontRightDistance);
-  Serial.print("\r\n");*/
-  if(!startedSensors){
-    sensorFrontLeft.start();
-    sensorFrontRight.start();
-    sensorLeftLeft.start();
-    sensorLeftRight.start();
-    sensorRightLeft.start();
-    sensorRightRight.start();
-    sensorBackLeft.start();
-    sensorBackRight.start(); 
-    startedSensors = true;
-  }
-  checkSensors();
-
 }
-
-
-void checkSensors() {
-  
-  if(sensorFrontLeft.isFinished()){
-      frontLeftDistance = sensorFrontLeft.getRange();
-      sensorFrontLeft.start();
-  }
-  if(sensorFrontRight.isFinished()){
-      frontRightDistance = sensorFrontRight.getRange();
-      sensorFrontRight.start();
-  }
-  if(sensorRightRight.isFinished()){
-      rightRightDistance = sensorRightRight.getRange();
-      sensorRightRight.start();
-  }
-  if(sensorRightLeft.isFinished()){
-      rightLeftDistance = sensorRightLeft.getRange();
-      sensorRightRight.start();
-  }
-  if(sensorLeftRight.isFinished()){
-      leftRightDistance = sensorLeftRight.getRange();
-      sensorLeftRight.start();
-  }
-  if(sensorLeftLeft.isFinished()){
-      leftLeftDistance = sensorLeftLeft.getRange();
-      sensorLeftRight.start();
-  }
-  if(sensorBackRight.isFinished()){
-      backRightDistance = sensorBackRight.getRange();
-      sensorBackRight.start();
-  }
-  if(sensorBackLeft.isFinished()){
-      backLeftDistance = sensorBackLeft.getRange();
-      sensorBackRight.start();
-  }
-}
-
-
-
-/**************************************************
- *
- *					ENGINE
- *
- *************************************************/
-String readSerial() {
+String readSerial0() {
 
   String str = "";
 
@@ -234,29 +278,30 @@ void setCurrentMovement(char direction, int speed) {
 }
 
 void stayStill(){
-    motor1.run(RELEASE);
+    //motor1.run(RELEASE);
     motor2.run(RELEASE);
     motor3.run(RELEASE);
-    motor4.run(RELEASE);
+    //motor4.run(RELEASE);
     delay(300);
 }
 
 void goForward(){
-    motor1.run(FORWARD);
     motor2.run(FORWARD);
+    motor3.run(FORWARD);
 }
 
 void goBackward(){
-    motor1.run(BACKWARD);
+    
     motor2.run(BACKWARD);
+    motor3.run(BACKWARD);
 }
 
 void turnLeft(){
-    motor1.run(FORWARD);
-    motor2.run(BACKWARD);
+    motor2.run(FORWARD);
+    motor3.run(BACKWARD);
 }
 
 void turnRight(){
-    motor1.run(BACKWARD);
-    motor2.run(FORWARD);
+    motor2.run(BACKWARD);
+    motor3.run(FORWARD);
 }
