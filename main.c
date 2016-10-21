@@ -5,6 +5,13 @@ int redLed = 44;
 int greenLed = 45;
 int blueLed = 46;
 
+int redLedValue = 255;
+int greenLedValue = 255;
+int blueLedValue = 255;
+int ledState = 1; //0 = static, 1 = blink;
+int ledLastBlink = 0;
+int ledLastBlinkState = 0;//0 = off, 1 = on
+
 //SENSORS
 long frontLeftDistance = 0;
 long frontRightDistance = 0;
@@ -27,7 +34,7 @@ bool isMovingBackward = false;
 bool isMovingLeft = false;
 bool isMovingRight = false;
 bool saidHello = false;
-
+unsigned long lastSensorReport = 0;;
 
 void setup() {
 
@@ -55,23 +62,96 @@ void setup() {
 
 
 void loop() {
-  analogWrite(redLed, 255);
-  analogWrite(greenLed, 0);
-  analogWrite(blueLed, 0);
+    
   if (!saidHello) {
     Serial.write("HELLO;");
     saidHello = true;
   }
 
+  checkLeds();
   checkEngines();
   updateSensors();
-  reportSensors();
- 
-  
+
+  refreshLedColor(); 
+  //reportSensors();   
   keepMoving();
   
 }
 
+/**************************************************
+ *
+ *          LEDS
+ *
+ *************************************************/
+ 
+void checkLeds(){
+  String str = readSerial0();
+
+  if (str.length() < 1) 
+    return;
+    
+  if (str.charAt(0) != 'L') {
+    return;
+  }
+
+  //LC000000
+  if(str.charAt(1) == 'C') {
+    String hexColor = "#";
+    hexColor += str.substring(2,8);
+    setLedColor(hexColor);
+  }
+
+  //LS1
+  if(str.charAt(1) == 'S'){
+    if(str.charAt(2) == '0'){
+      ledState = 0;
+    }
+
+    if(str.charAt(2) == '1'){
+      ledState = 1;
+    }
+  }
+
+}
+
+void setLedColor(String hexColor){
+  long number = strtol( &hexColor[1], NULL, 16);
+  
+  redLedValue = number >> 16;
+  greenLedValue = number >> 8 & 0xFF;
+  blueLedValue = number & 0xFF;  
+
+}
+
+void refreshLedColor(){
+  if(ledState == 0){
+    turnLedsOn();
+  }else{
+    unsigned long now = millis();
+    if(now - ledLastBlink > 500){
+      if(ledLastBlinkState == 1){
+        turnLedsOff();
+        ledLastBlinkState = 0;
+      }else{
+        turnLedsOn();
+        ledLastBlinkState = 1;
+      }
+      ledLastBlink = millis();
+    }
+  }
+}
+
+void turnLedsOn(){
+  analogWrite(redLed, redLedValue);
+  analogWrite(greenLed, greenLedValue);
+  analogWrite(blueLed, blueLedValue);
+}
+
+void turnLedsOff(){
+  analogWrite(redLed, 0);
+  analogWrite(greenLed, 0);
+  analogWrite(blueLed, 0);
+}
 /**************************************************
  *
  *          SENSORS
@@ -79,6 +159,9 @@ void loop() {
  *************************************************/
 
 void reportSensors(){
+  unsigned long now = millis();
+  if(now - lastSensorReport < 700)
+    return;
   reportSensor('F','L',frontLeftDistance);
   reportSensor('F','R',frontRightDistance);
   reportSensor('L','L',leftLeftDistance);
